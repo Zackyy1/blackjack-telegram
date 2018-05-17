@@ -3,16 +3,30 @@ from telebot import types
 import telebot
 import database
 import random
+import time
+import redis
+import os
+from flask import jsonify
+from flask import Flask
+from flask import request
+import requests
+import re
+import json
+
+
+
+token = os.environ['TELEGRAM_TOKEN']
+url = os.environ['FIREBASE_URL']
+server = Flask(__name__)
+
+
+
+
 db = database.database
 deck = database.deck
-import time
-token = "550498827:AAGrkloMvGbcTybDLng4O3D4D1xE8Jo4dKY"
 bot = telebot.TeleBot(token)
 from firebase import firebase
 statistics = database.statistics
-
-
-url = "https://blackjack-telegram.firebaseio.com/"
 fb = firebase.FirebaseApplication(url, None)
 
 def update():
@@ -282,7 +296,21 @@ def handle_text(mes):
         newGame(mes)
 
 
-try:
-    bot.polling()
-except Exception as x:
-    print(x)
+@server.route('/' + token, methods=['POST'])
+def getMessage():
+    bot.process_new_updates([telebot.types.Update.de_json(request.stream.read().decode("utf-8"))])
+    return "!", 200
+
+
+@server.route("/")
+def webhook():
+    bot.remove_webhook()
+    bot.set_webhook(url='https://blackjack-telegram.herokuapp.com/' + token)
+    return "!", 200
+
+
+if __name__ == "__main__":
+    try:
+        server.run(host="0.0.0.0", port=int(os.environ.get('PORT', 5000)))
+    except Exception as x:
+        print(x)
